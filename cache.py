@@ -4,7 +4,7 @@ class Block:
 	def __init__(self, size):
 		self.item = [None] * size
 		self.use = 0
-		#self.modified = 0
+		self.dirty = 0
 		self.valid = 0
 		self.tag = None
 
@@ -37,8 +37,7 @@ class Cache:
 		inputs:
 			address (str): binary address of memory element, in str format
 		returns:
-			None, if cache miss
-			data, if cache hit
+			None
 		'''
 		tag, index, offset = self.get_fields(address)
 		index = int(index, 2)
@@ -71,7 +70,8 @@ class Cache:
 			address (str): binary address of memory element
 			item (list): memory block to be loaded onto cache; a list of bytes
 		returns:
-			None
+			True, if block replaced is dirty
+			False, if block replaced is not dirty
 		'''
 		tag, index, offset = self.get_fields(address)
 		index = int(index, 2)
