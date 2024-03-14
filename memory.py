@@ -3,10 +3,13 @@ from math import log
 
 class Memory:
 
-    def __init__(self, size, block_size):
+    def __init__(self, mem_size, block_size, assoc):
         # Defining memory parameters
         self.block_size = block_size
-        self.size = size
+        self.mem_size = mem_size
+        self.assoc = assoc
+
+        self.n_set = self.mem_size // (self.block_size * self.assoc)
 
         # address params
         self.nb_offset = int(log(self.block_size, 2))  # number of offset bits
@@ -19,17 +22,16 @@ class Memory:
     def read(self, addr):
         out = None
 
-        
-        if self.set[addr]:
-            out = self.set[addr]
+        addr_decimal = int(addr, 2)
+        if addr_decimal in self.set:
+            out = self.set[addr_decimal]
 
         return out
 
-
     def write(self, addr, word):
 
-        self.set.update({addr:word})
-
+        addr_decimal = int(addr, 2)
+        self.set.update({addr_decimal:word})
 
     def get_block(self, address):
 
