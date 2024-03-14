@@ -33,9 +33,19 @@ class Memory:
         addr_decimal = int(addr, 2)
         self.set.update({addr_decimal:word})
 
-    def get_block(self, address):
+    def get_block(self, addr):
 
-        start = address - (address % self.block_size)
+        addr_decimal = int(addr, 2)
+        block = []
+        start = addr_decimal - (addr_decimal % self.block_size)
+        end = start + self.block_size
+
+        for i in range(start, end):
+            hold = self.set[i]
+            block.append(hold)
+
+        return block
+
 
     def get_fields(self, address):
         tag = address[:self.nb_tag]
