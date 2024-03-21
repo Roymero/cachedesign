@@ -24,6 +24,7 @@ class Cache:
 		
 		# address params
 		self.nb_offset = int(log(self.block_size, 2)) # number of offset bits
+		print(self.n_set)
 		self.nb_index = int(log(self.n_set, 2)) # number of index bits
 		self.nb_tag = int(log(self.mem_size, 2)) - self.nb_index - self.nb_offset # number of tag bits
 		

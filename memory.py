@@ -1,5 +1,5 @@
 from math import log
-
+import random
 
 class Memory:
 
@@ -18,6 +18,8 @@ class Memory:
 
         # Creating Memory
         self.set = {}
+        for i in range(mem_size):
+            self.set[i] = random.randint(0,10)
 
     def read(self, addr):
         out = None
@@ -46,9 +48,17 @@ class Memory:
 
         return block
         
-    def load_block(
+    def load_block(self,addr,blk):
+        addr_decimal = int(addr, 2)
+        block = []
+        start = addr_decimal - (addr_decimal % self.block_size)
+        end = start + self.block_size
 
-
+        j = 0
+        for i in range(start, end):
+            self.set[i] = blk[j]
+            j += 1
+            
     def get_fields(self, address):
         tag = address[:self.nb_tag]
         index = address[self.nb_tag:self.nb_tag + self.nb_index]
