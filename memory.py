@@ -45,6 +45,8 @@ class Memory:
             block.append(hold)
 
         return block
+        
+    def load_block(
 
 
     def get_fields(self, address):
