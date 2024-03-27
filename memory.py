@@ -48,6 +48,29 @@ class Memory:
 
         return block
         
+    #get block and prefetch n blocks
+    #prefetch = 
+    def get_block_pfch(self, addr, prefetch):
+
+        addr_decimal = int(addr, 2)     #convert address to binary
+        
+        block_pfch = []
+        start = addr_decimal - (addr_decimal % self.block_size)
+        end = start + self.block_size
+        
+        #addr_pfch = addr_decimal + int(prefetch, 2)     #add blocks to prefetch to address
+        #start_pfch = addr_decimal - (addr_pfch % self.block_size)
+        
+        end_pfch = start + prefetch*self.block_size
+        
+        #loop to append fetch and prefetch
+        for p in range(start, end_pfch, self.block_size):
+            for i in range(start, end):
+                hold = self.set[i]
+                block_pfch.append(hold)
+                
+        return block_pfch
+        
     def load_block(self,addr,blk):
         addr_decimal = int(addr, 2)
         block = []
