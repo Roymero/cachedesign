@@ -48,6 +48,7 @@ class Memory:
 
         return block
         
+
     #get block and prefetch n blocks
     #prefetch = 
     def get_block_pfch(self, addr, prefetch):

@@ -9,6 +9,7 @@ class Block:
 		self.tag = None
 
 class Cache:
+  
 	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol, block_pfch):
 		# define cache parameters
 		self.cache_size = cache_size
@@ -67,7 +68,9 @@ class Cache:
 		
 		return out
 		
+
 	def write(self, address, word, blocks):     #blocks is number of blocks fetched + prefetched
+
 		'''
 		inputs:
 			address (str): binary address of memory element, in str format
@@ -80,6 +83,7 @@ class Cache:
 		
 		cacheset = self.set[index]
 		out = False
+
         for x in block_pfch:
             for block in cacheset:
                 if block.valid == 1 and block.tag == tag:

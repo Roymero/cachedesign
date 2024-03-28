@@ -5,16 +5,16 @@ from memory import Memory
 import argparse
 import random
 
-#need to add # to prefetch variable
-#pfch is # of blocks to prefetch
 
 class Simulator:
     #def __init__(self, cache_size, mem_size, block_size, assoc, replace_pol, write_pol, block_pfch):
     def __init__(self, cache_size, mem_size, block_size, assoc, replace_pol, write_pol, block_pfch):
+      
         self.cache = Cache(cache_size, block_size, assoc, mem_size, replace_pol, write_pol)
         self.memory = Memory(mem_size, block_size, assoc)
 	    
         self.write_pol = write_pol
+
         
         self.block_pfch = block_pfch   #how many blocks to prefetch
         #block_pfch = 0, static, or random
@@ -36,12 +36,11 @@ class Simulator:
         if out != None:
             self.hit += 1
         else:
+          
         #cache miss
             self.miss += 1
             blk = self.memory.get_block(addr)   #get from memory
             #implement prefetch here
-            
-            
             
             if self.write_pol == 'WB':
                 dirty, oldblk = self.cache.load(addr, blk)
@@ -78,9 +77,6 @@ class Simulator:
             out = self.cache.read(addr)
         
         return out
-        
-        
-        
 	    
     def write(self, addr, word):
         written = self.cache.write(addr, word)
@@ -128,10 +124,12 @@ if __name__ == '__main__':
                         help="Replacement policy for cache {"+", ".join(replacement_policies)+"}")
     parser.add_argument("WRITE", metavar="WRITE", choices=write_policies,
                         help="Write policy for cache {"+", ".join(write_policies)+"}")
+    
     #parser.add_argument("PFCH", metavar="PFCH", type=int,
     #                    help="Number of blocks to prefetch")
     parser.add_argument("PFCH", metavar="PFCH", choices=prefetch_policies,
                         help="Prefetch policy {"+", ".join(prefetch_policies)+"}")
+
     args = parser.parse_args()
 
     mem_size = 2 ** args.MEMORY
@@ -168,12 +166,14 @@ if __name__ == '__main__':
             addr = paddedaddr(int(params[0]), addrlen)
             out = simulator.read(addr)
             print(out)
+            
         elif command == "read2" and len(params) == 1:   #read addr + 1
             addr = paddedaddr2(int(params[0]), addrlen)
             out = simulator.read2(addr)
             #print("\nblocks to prefetch: " + str(block_pfch) + "\n")
             #print("\nblocks to prefetch: " + str(self.block_pfch) + "\n")
             print(out)
+
         elif command == "write" and len(params) == 2:
             addr = paddedaddr(int(params[0]), addrlen)
             word = int(params[1])
