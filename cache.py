@@ -9,12 +9,14 @@ class Block:
 		self.tag = None
 
 class Cache:
-	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol):
+  
+	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol, block_pfch):
 		# define cache parameters
 		self.cache_size = cache_size
 		self.block_size = block_size
 		self.assoc = assoc
 		self.mem_size = mem_size
+        self.block_pfch = block_pfch
 		
 		#define policies
 		self.replace_pol = replace_pol
@@ -66,7 +68,9 @@ class Cache:
 		
 		return out
 		
-	def write(self, address, word):
+
+	def write(self, address, word, blocks):     #blocks is number of blocks fetched + prefetched
+
 		'''
 		inputs:
 			address (str): binary address of memory element, in str format
@@ -79,28 +83,30 @@ class Cache:
 		
 		cacheset = self.set[index]
 		out = False
-		for block in cacheset:
-			if block.valid == 1 and block.tag == tag:
-				block.item[offset] = word
-				out = True
-				if self.write_pol == 'WB':
-					block.dirty = 1
-					
-				if self.replace_pol == 'LRU':
-					tmp = block
-					cacheset.remove(block)
-					cacheset.append(tmp)
-					
-				elif self.replace_pol == 'LFU':
-					block.use += 1
-					
-				elif self.replace_pol == 'FIFO':
-					pass
-					
-				elif self.replace_pol == 'RAND':
-					pass
-					
-				break
+
+        for x in block_pfch:
+            for block in cacheset:
+                if block.valid == 1 and block.tag == tag:
+                    block.item[offset] = word
+                    out = True
+                    if self.write_pol == 'WB':
+                        block.dirty = 1
+                        
+                    if self.replace_pol == 'LRU':
+                        tmp = block
+                        cacheset.remove(block)
+                        cacheset.append(tmp)
+                     
+                    elif self.replace_pol == 'LFU':
+                        block.use += 1
+                        
+                    elif self.replace_pol == 'FIFO':
+                        pass
+                        
+                    elif self.replace_pol == 'RAND':
+                        pass
+                        
+                    break
 					
 		return out
 		
