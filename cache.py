@@ -9,20 +9,23 @@ class Block:
 		self.tag = None
 
 class Cache:
-	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol):
+	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol, block_pfch):
 		# define cache parameters
 		self.cache_size = cache_size
 		self.block_size = block_size
 		self.assoc = assoc
 		self.mem_size = mem_size
+        self.block_pfch = block_pfch
 		
 		#define policies
 		self.replace_pol = replace_pol
+		self.write_pol = write_pol
 		
 		self.n_set = self.cache_size // (self.block_size * self.assoc) # number of sets in cache
 		
 		# address params
 		self.nb_offset = int(log(self.block_size, 2)) # number of offset bits
+		print(self.n_set)
 		self.nb_index = int(log(self.n_set, 2)) # number of index bits
 		self.nb_tag = int(log(self.mem_size, 2)) - self.nb_index - self.nb_offset # number of tag bits
 		
@@ -64,6 +67,45 @@ class Cache:
 		
 		return out
 		
+	def write(self, address, word, blocks):     #blocks is number of blocks fetched + prefetched
+		'''
+		inputs:
+			address (str): binary address of memory element, in str format
+		returns:
+			None
+		'''
+		tag, index, offset = self.get_fields(address)
+		index = int(index, 2)
+		offset = int(offset,2)
+		
+		cacheset = self.set[index]
+		out = False
+        for x in block_pfch:
+            for block in cacheset:
+                if block.valid == 1 and block.tag == tag:
+                    block.item[offset] = word
+                    out = True
+                    if self.write_pol == 'WB':
+                        block.dirty = 1
+                        
+                    if self.replace_pol == 'LRU':
+                        tmp = block
+                        cacheset.remove(block)
+                        cacheset.append(tmp)
+                     
+                    elif self.replace_pol == 'LFU':
+                        block.use += 1
+                        
+                    elif self.replace_pol == 'FIFO':
+                        pass
+                        
+                    elif self.replace_pol == 'RAND':
+                        pass
+                        
+                    break
+					
+		return out
+		
 	def load(self, address, data):
 		'''
 		inputs:
@@ -83,13 +125,18 @@ class Cache:
 		newblk.item = data
 		
 		if self.replace_pol == 'LRU':
-			self.LRU_op(cacheset, newblk)
+			oldblk = self.LRU_op(cacheset, newblk)
 		elif self.replace_pol == 'LFU':
-			self.LFU_op(cacheset, newblk)
+			oldblk = self.LFU_op(cacheset, newblk)
 		elif self.replace_pol == 'FIFO':
-			self.FIFO_op(cacheset, newblk)
+			oldblk = self.FIFO_op(cacheset, newblk)
 		elif self.replace_pol == 'RAND':
-			self.RAND_op(cacheset, newblk)
+			oldblk = self.RAND_op(cacheset, newblk)
+			
+		if oldblk.dirty == 1:
+			return True, oldblk
+		else:
+			return False, oldblk
 		
 	###########################################
 	# util functions to assist main functions #
@@ -103,21 +150,25 @@ class Cache:
 	def LRU_op(self, cacheset, newblk):
 		use = list(map(lambda x: x.use, cacheset))
 		lru = use.index(min(use))
-		cacheset.pop(lru)
+		oldblk = cacheset.pop(lru)
 		cacheset.append(newblk)
+		return oldblk
 		
 	def LFU_op(self, cacheset, newblk):
-		cacheset.pop(0)
+		oldblk = cacheset.pop(0)
 		cacheset.append(newblk)
+		return oldblk
 	
 	def FIFO_op(self, cacheset, newblk):
-		cacheset.pop(0)
+		oldblk = cacheset.pop(0)
 		cacheset.append(newblk)
+		return oldblk
 		
 	def RAND_op(self, cacheset, newblk):
 		idx = random.randint(len(cacheset))
-		cacheset.pop(idx)
+		oldblk = cacheset.pop(idx)
 		cacheset.append(newblk)
+		return oldblk
 		
 #################
 # for debugging #
