@@ -1,5 +1,6 @@
 from math import log
 import random
+from cache import Block
 
 class Memory:
 
@@ -18,8 +19,6 @@ class Memory:
 
         # Creating Memory
         self.set = {}
-        for i in range(mem_size):
-            self.set[i] = random.randint(0,10)
 
     def read(self, addr):
         out = None
@@ -27,52 +26,36 @@ class Memory:
         addr_decimal = int(addr, 2)
         if addr_decimal in self.set:
             out = self.set[addr_decimal]
+        else:
+            self.set[addr_decimal] = random.randint(0,10)
 
         return out
 
     def write(self, addr, word):
-
         addr_decimal = int(addr, 2)
         self.set.update({addr_decimal:word})
 
     def get_block(self, addr):
-
         addr_decimal = int(addr, 2)
         block = []
         start = addr_decimal - (addr_decimal % self.block_size)
         end = start + self.block_size
 
         for i in range(start, end):
-            hold = self.set[i]
+            if i in self.set:
+                hold = self.set[i]
+            else:
+                self.set[i] = random.randint(0,10)
+                hold = self.set[i]
             block.append(hold)
+        newblock = Block(self.block_size)
+        newblock.item = block
+        block = newblock # need to wrap it in Block class per Cache class' syntax
 
         return block
         
-
-    #get block and prefetch n blocks
-    #prefetch = 
-    def get_block_pfch(self, addr, prefetch):
-
-        addr_decimal = int(addr, 2)     #convert address to binary
-        
-        block_pfch = []
-        start = addr_decimal - (addr_decimal % self.block_size)
-        end = start + self.block_size
-        
-        #addr_pfch = addr_decimal + int(prefetch, 2)     #add blocks to prefetch to address
-        #start_pfch = addr_decimal - (addr_pfch % self.block_size)
-        
-        end_pfch = start + prefetch*self.block_size
-        
-        #loop to append fetch and prefetch
-        for p in range(start, end_pfch, self.block_size):
-            for i in range(start, end):
-                hold = self.set[i]
-                block_pfch.append(hold)
-                
-        return block_pfch
-        
     def load_block(self,addr,blk):
+        blk = blk.item
         addr_decimal = int(addr, 2)
         block = []
         start = addr_decimal - (addr_decimal % self.block_size)
