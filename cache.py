@@ -9,7 +9,7 @@ class Block:
 		self.tag = None
 
 class Cache:
-	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol):
+	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol):
 		# define cache parameters
 		self.cache_size = cache_size
 		self.block_size = block_size
@@ -18,7 +18,6 @@ class Cache:
 		
 		#define policies
 		self.replace_pol = replace_pol
-		self.write_pol = write_pol
 		
 		self.n_set = self.cache_size // (self.block_size * self.assoc) # number of sets in cache
 		
@@ -83,8 +82,7 @@ class Cache:
 			if block.valid == 1 and block.tag == tag:
 				block.item[offset] = word
 				out = True
-				if self.write_pol == 'WB':
-					block.dirty = 1
+				block.dirty = 1
 					
 				if self.replace_pol == 'LRU':
 					tmp = block

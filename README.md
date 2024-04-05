@@ -8,4 +8,4 @@ Run `python simulator.py 32 20 4 10 3 4 LFU WT`.
 
 ### (Example: Running experiment on trace files)
 
-Run `python simulator.py 32 20 4 10 3 4 LFU WT < gcc_trace.txt`.
+Run `python simulator.py 4 10 3 20 4 LFU < traces/gcc_trace.txt`.
