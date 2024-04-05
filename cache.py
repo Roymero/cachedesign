@@ -121,6 +121,7 @@ class Cache:
 		newblk.valid = 1
 		newblk.tag = tag
 		newblk.item = data.item
+		newblk.dirty = data.dirty
 		
 		if len(cacheset) >= self.assoc: #if set is full
 		    if self.replace_pol == 'LRU':
