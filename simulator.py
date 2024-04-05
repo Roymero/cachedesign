@@ -73,14 +73,16 @@ class Simulator:
                 blk = self.memory.get_block(addr) # read from memory
                 dirty, oldblk = self.cache2.load(addr, blk) # load block onto cache2
                 if self.write_pol == 'WB' and dirty: # if WB, write to memory
-                    self.memory.load(oldblk)
+                    #self.memory.load_block(addr, oldblk)
+                    print('TRIGGER')
                     
                 out, offset = self.cache2.read(addr) # read from cache2
                 dirty, oldblk = self.cache.load(addr, out) # load block onto cache1
                 if self.write_pol == 'WB' and dirty: # if WB, write to cache2
                     dirty, oldblk = self.cache2.load(addr, blk)
                     if self.write_pol == 'WB' and dirty: # if WB, write to memory
-                        self.memory.load(oldblk)
+                        #self.memory.load_block(addr, oldblk)
+                        print('TRIGGER')
                 out, offset = self.cache.read(addr) # read from cache1
             else:
                 self.hit2 += 1
@@ -88,7 +90,8 @@ class Simulator:
                 if self.write_pol == 'WB' and dirty: # if WB, write to cache2
                     dirty, oldblk = self.cache2.load(addr, oldblk)
                     if self.write_pol == 'WB' and dirty: # if WB, write to memory
-                        self.memory.load(oldblk)
+                        #self.memory.load_block(addr, oldblk)
+                        print('TRIGGER')
                 out, offset = self.cache.read(addr) # read from cache1
         return out.item[offset]
         
@@ -135,20 +138,23 @@ class Simulator:
                     blk = self.memory.get_block(addr) # read from mem
                     dirty, oldblk = self.cache2.load(addr, blk) # load to l2 from mem
                     if dirty: # write to mem from l2
-                        self.memory.load(oldblk)
+                        self.memory.load_block(addr, oldblk)
+                        #print('TRIGGER')
                     out, offset = self.cache2.read(addr) # read from l2
                     dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2
                     if dirty: # write to l2 from l1
                         dirty, oldblk = self.cache2.load(addr, oldblk)
                         if dirty: # write to mem from l2
-                            self.memory.load(oldblk)
+                            self.memory.load_block(addr, oldblk)
+                            #print('TRIGGER')
                 else:
                     self.hit2 += 1
                     dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2
                     if dirty: # write to l2 from l1
                         dirty, oldblk = self.cache2.load(addr, oldblk)
                         if dirty: # write to mem from l2
-                            self.memory.load(oldblk)
+                            self.memory.load_block(addr, oldblk)
+                            #print('TRIGGER')
                     self.cache.write(addr, word) # write to l1
 
 # from decimal to binary
@@ -201,7 +207,7 @@ if __name__ == '__main__':
                           block_size,
                           replace_pol,
                           write_pol)
-
+    
     command = None
 
     while (command != "quit"):
