@@ -138,6 +138,38 @@ class Cache:
 			return True, oldblk
 		else:
 			return False, oldblk
+			
+	def purge(self, address):
+		'''
+		inputs:
+			address (str): binary address of memory element to purge
+		returns:
+			True, if block replaced is dirty
+			False, if block replaced is not dirty
+		'''
+		tag, index, offset = self.get_fields(address)
+		index = int(index, 2)
+		cacheset = self.set[index]
+		
+		newblk = Block(self.block_size)
+		
+		if len(cacheset) >= self.assoc: #if set is full
+		    if self.replace_pol == 'LRU':
+			    oldblk = self.LRU_op(cacheset, newblk)
+		    elif self.replace_pol == 'LFU':
+			    oldblk = self.LFU_op(cacheset, newblk)
+		    elif self.replace_pol == 'FIFO':
+			    oldblk = self.FIFO_op(cacheset, newblk)
+		    elif self.replace_pol == 'RAND':
+			    oldblk = self.RAND_op(cacheset, newblk)
+		else:
+			cacheset.append(newblk)
+			return False, None
+	        
+		if oldblk.dirty == 1:
+			return True, oldblk
+		else:
+			return False, oldblk
 		
 	###########################################
 	# util functions to assist main functions #

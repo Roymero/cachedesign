@@ -6,7 +6,7 @@ import argparse
 import random
 
 class Simulator:
-    def __init__(self, mem_size, cache_size1, assoc1, cache_size2, assoc2, block_size, replace_pol):
+    def __init__(self, mem_size, cache_size1, assoc1, cache_size2, assoc2, block_size, replace_pol, inclusion_pol):
         self.cache = Cache(cache_size1, block_size, assoc1, mem_size, replace_pol)
         print('cache1 loaded with size:', cache_size1)
         self.cache2 = Cache(cache_size2, block_size, assoc2, mem_size, replace_pol)
@@ -19,36 +19,43 @@ class Simulator:
         self.miss = 0
         self.hit2 = 0
         self.miss2 = 0
+        
+        self.include = True
+        if inclusion_pol == "NON":
+            self.include = False
           
     def read(self, addr):
-        out, offset = self.cache.read(addr) # read from cache1
+        out, offset = self.cache.read(addr) # read from l1
         if out != None:
             self.hit +=1
         else:
             self.miss += 1
-            out, offset = self.cache2.read(addr) # read from cache2
+            out, offset = self.cache2.read(addr) # read from l2
             if out == None:
                 self.miss2 += 1
                 blk = self.memory.get_block(addr) # read from memory
-                dirty, oldblk = self.cache2.load(addr, blk) # load block onto cache2
-                if dirty: # if WB, write to memory
+                dirty, oldblk = self.cache2.load(addr, blk) # load block onto l2
+                if dirty: # if dirty, write to memory
                     self.memory.load_block(addr, oldblk)
-                    
-                out, offset = self.cache2.read(addr) # read from cache2
-                dirty, oldblk = self.cache.load(addr, out) # load block onto cache1
-                if dirty: # if WB, write to cache2
-                    dirty, oldblk = self.cache2.load(addr, blk)
-                    if dirty: # if WB, write to memory
+                if self.include: # if inclusion
+                    dirty, oldblk = self.cache.purge(addr)
+                    if dirty: # write to mem directly from l1
                         self.memory.load_block(addr, oldblk)
-                out, offset = self.cache.read(addr) # read from cache1
+                out, offset = self.cache2.read(addr) # read from l2
+                dirty, oldblk = self.cache.load(addr, out) # load block onto l1
+                if dirty: # if dirty, write to l2
+                    dirty, oldblk = self.cache2.load(addr, blk)
+                    if dirty: # if dirty, write to memory
+                        self.memory.load_block(addr, oldblk)
+                out, offset = self.cache.read(addr) # read from l1
             else:
                 self.hit2 += 1
-                dirty, oldblk = self.cache.load(addr, out) # load block onto cache1
-                if dirty: # if WB, write to cache2
+                dirty, oldblk = self.cache.load(addr, out) # load block onto l1
+                if dirty: # if dirty, write to l2
                     dirty, oldblk = self.cache2.load(addr, oldblk)
-                    if dirty: # if WB, write to memory
+                    if dirty: # if dirty, write to memory
                         self.memory.load_block(addr, oldblk)
-                out, offset = self.cache.read(addr) # read from cache1
+                out, offset = self.cache.read(addr) # read from l1
         return out.item[offset]
         
     def write(self, addr, word):
@@ -65,6 +72,10 @@ class Simulator:
                 dirty, oldblk = self.cache2.load(addr, blk) # load to l2 from mem
                 if dirty: # write to mem from l2
                     self.memory.load_block(addr, oldblk)
+                if self.include: # if inclusion
+                    dirty, oldblk = self.cache.purge(addr)
+                    if dirty: # write to mem directly from l1
+                        self.memory.load_block(addr, oldblk)
                 out, offset = self.cache2.read(addr) # read from l2
                 dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2
                 if dirty: # write to l2 from l1
@@ -90,6 +101,7 @@ def hexpaddedaddr(addr, z):
 	
 if __name__ == '__main__':
     replacement_policies = ["LRU", "LFU", "FIFO", "RAND"]
+    inclusion_policies = ["NON", "INCLUDE"]
     
     parser = argparse.ArgumentParser(description="Simulate the cache of a CPU.")
     '''
@@ -108,6 +120,8 @@ if __name__ == '__main__':
                         help="Mapping policy for cache2 in 2^N ways")
     parser.add_argument("REPLACE", metavar="REPLACE", choices=replacement_policies,
                         help="Replacement policy for cache {"+", ".join(replacement_policies)+"}")
+    parser.add_argument("INCLUSION", metavar="INCLUSION", choices=inclusion_policies,
+                        help="Replacement policy for cache {"+", ".join(inclusion_policies)+"}")
     args = parser.parse_args()
 
     #mem_size = 2 ** args.MEMORY
@@ -118,6 +132,7 @@ if __name__ == '__main__':
     assoc2 = 2 ** args.ASSOC2
     block_size = 2 ** args.BLOCK
     replace_pol = args.REPLACE
+    inclusion_pol = args.INCLUSION
     
     #addrlen = args.MEMORY
     addrlen = 32
@@ -128,7 +143,8 @@ if __name__ == '__main__':
                           cache_size2,
                           assoc2,
                           block_size,
-                          replace_pol)
+                          replace_pol,
+                          inclusion_pol)
     
     command = None
 
