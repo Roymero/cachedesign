@@ -82,6 +82,7 @@ class Simulator:
                     dirty, oldblk = self.cache2.load(addr, oldblk)
                     if dirty: # write to mem from l2
                         self.memory.load_block(addr, oldblk)
+                self.cache.write(addr, word) # write to l1
             else:
                 self.hit2 += 1
                 dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2

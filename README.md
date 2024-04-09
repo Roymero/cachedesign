@@ -6,7 +6,7 @@ Run `python simulator.py -h` to get the syntax for the simulator parameters.
 
 ### (Example: CLI commands)
 
-Run `python simulator.py 32 20 4 10 3 4 LFU INCLUDE`.
+Run `python simulator.py 4 10 3 20 4 LFU INCLUDE`.
 
 ### (Example: Running experiment on trace files)
 
