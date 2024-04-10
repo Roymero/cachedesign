@@ -5,14 +5,28 @@ from memory import Memory
 import argparse
 import random
 
+
+
 class Simulator:
-    def __init__(self, mem_size, cache_size1, assoc1, cache_size2, assoc2, block_size, replace_pol, inclusion_pol):
+    def __init__(self, mem_size, cache_size1, assoc1, cache_size2, assoc2, block_size, replace_pol, inclusion_pol, pfch_window):
         self.cache = Cache(cache_size1, block_size, assoc1, mem_size, replace_pol)
         print('cache1 loaded with size:', cache_size1)
         self.cache2 = Cache(cache_size2, block_size, assoc2, mem_size, replace_pol)
         print('cache2 loaded with size:', cache_size2)
         self.memory = Memory(mem_size, block_size, assoc2)
         print('mem loaded with size:', mem_size)
+        
+        #enable or disable prefetch
+        self.window = [0]
+        
+        for i in range(1, pfch_window + 1):
+            ele = [i, -i]
+            self.window.extend(ele)
+        
+        if pfch_window == -1:
+            self.window = [0,1]
+            
+        print("prefetch window width: " + str(pfch_window) +"\n")
 	    
 	    # hit and miss metrics
         self.hit = 0
@@ -24,73 +38,100 @@ class Simulator:
         if inclusion_pol == "NON":
             self.include = False
           
-    def read(self, addr):
-        out, offset = self.cache.read(addr) # read from l1
+    def read(self, addr, addrlen):
+        window = self.window
+        
+        out, offset = self.cache.read(addr) # read from l1 
+       
         if out != None:
             self.hit +=1
         else:
             self.miss += 1
-            out, offset = self.cache2.read(addr) # read from l2
-            if out == None:
-                self.miss2 += 1
-                blk = self.memory.get_block(addr) # read from memory
-                dirty, oldblk = self.cache2.load(addr, blk) # load block onto l2
-                if dirty: # if dirty, write to memory
-                    self.memory.load_block(addr, oldblk)
-                if self.include: # if inclusion
-                    dirty, oldblk = self.cache.purge(addr)
-                    if dirty: # write to mem directly from l1
-                        self.memory.load_block(addr, oldblk)
-                out, offset = self.cache2.read(addr) # read from l2
-                dirty, oldblk = self.cache.load(addr, out) # load block onto l1
-                if dirty: # if dirty, write to l2
-                    dirty, oldblk = self.cache2.load(addr, blk)
+           
+            for x in window: # fetch a window of blks, first blk is the desired blk
+                current_block = (x*block_size)
+                current_addr = int(addr, 2) + current_block #int
+                addr_bin = decpaddedaddr(current_addr, addrlen) #decimal to binary
+                
+                out, offset = self.cache2.read(addr_bin) # read from l2
+                
+                if out == None: #L2 miss
+                    if x == 0: # if first blk in window
+                        self.miss2 += 1
+                    blk = self.memory.get_block(addr_bin) # read from memory
+                    dirty, oldblk = self.cache2.load(addr_bin, blk) # load block onto l2
                     if dirty: # if dirty, write to memory
-                        self.memory.load_block(addr, oldblk)
-                out, offset = self.cache.read(addr) # read from l1
-            else:
-                self.hit2 += 1
-                dirty, oldblk = self.cache.load(addr, out) # load block onto l1
-                if dirty: # if dirty, write to l2
-                    dirty, oldblk = self.cache2.load(addr, oldblk)
-                    if dirty: # if dirty, write to memory
-                        self.memory.load_block(addr, oldblk)
-                out, offset = self.cache.read(addr) # read from l1
+                        self.memory.load_block(addr_bin, oldblk)
+                    if self.include: # if inclusion
+                        dirty, oldblk = self.cache.purge(addr_bin)
+                        if dirty: # write to mem directly from l1
+                            self.memory.load_block(addr_bin, oldblk)
+                    out, offset = self.cache2.read(addr_bin) # read from l2
+                    dirty, oldblk = self.cache.load(addr_bin, out) # load block onto l1
+                    if dirty: # if dirty, write to l2
+                        dirty, oldblk = self.cache2.load(addr_bin, blk)
+                        if dirty: # if dirty, write to memory
+                            self.memory.load_block(addr_bin, oldblk)
+                    if x == 0: # if first blk in window
+                        out, offset = self.cache.read(addr_bin) # read from l1
+                else:
+                    if x == 0: # if first blk in window
+                        self.hit2 += 1
+                    dirty, oldblk = self.cache.load(addr_bin, out) # load block onto l1
+                    if dirty: # if dirty, write to l2
+                        dirty, oldblk = self.cache2.load(addr_bin, oldblk)
+                        if dirty: # if dirty, write to memory
+                            self.memory.load_block(addr_bin, oldblk)
+                    if x == 0: # if first blk in window
+                        out, offset = self.cache.read(addr_bin) # read from l1
+            
+        
         return out.item[offset]
         
     def write(self, addr, word):
+        window = self.window
         written = self.cache.write(addr, word) # write to l1
         
         if written:
             self.hit +=1
         else:
             self.miss += 1
-            out, offset = self.cache2.read(addr) # read from l2
-            if out == None:
-                self.miss2 += 1
-                blk = self.memory.get_block(addr) # read from mem
-                dirty, oldblk = self.cache2.load(addr, blk) # load to l2 from mem
-                if dirty: # write to mem from l2
-                    self.memory.load_block(addr, oldblk)
-                if self.include: # if inclusion
-                    dirty, oldblk = self.cache.purge(addr)
-                    if dirty: # write to mem directly from l1
-                        self.memory.load_block(addr, oldblk)
-                out, offset = self.cache2.read(addr) # read from l2
-                dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2
-                if dirty: # write to l2 from l1
-                    dirty, oldblk = self.cache2.load(addr, oldblk)
+            
+            for x in window:
+                current_block = (x*block_size)
+                current_addr = int(addr, 2) + current_block #int
+                addr_bin = decpaddedaddr(current_addr, addrlen) #decimal to binary
+            
+                out, offset = self.cache2.read(addr_bin) # read from l2
+                if out == None:
+                    if x == 0: # if first blk in window
+                        self.miss2 += 1
+                    blk = self.memory.get_block(addr_bin) # read from mem
+                    dirty, oldblk = self.cache2.load(addr_bin, blk) # load to l2 from mem
                     if dirty: # write to mem from l2
-                        self.memory.load_block(addr, oldblk)
-                self.cache.write(addr, word) # write to l1
-            else:
-                self.hit2 += 1
-                dirty, oldblk = self.cache.load(addr, out) # load to l1 from l2
-                if dirty: # write to l2 from l1
-                    dirty, oldblk = self.cache2.load(addr, oldblk)
-                    if dirty: # write to mem from l2
-                        self.memory.load_block(addr, oldblk)
-                self.cache.write(addr, word) # write to l1
+                        self.memory.load_block(addr_bin, oldblk)
+                    if self.include: # if inclusion
+                        dirty, oldblk = self.cache.purge(addr_bin)
+                        if dirty: # write to mem directly from l1
+                            self.memory.load_block(addr_bin, oldblk)
+                    out, offset = self.cache2.read(addr_bin) # read from l2
+                    dirty, oldblk = self.cache.load(addr_bin, out) # load to l1 from l2
+                    if dirty: # write to l2 from l1
+                        dirty, oldblk = self.cache2.load(addr_bin, oldblk)
+                        if dirty: # write to mem from l2
+                            self.memory.load_block(addr_bin, oldblk)
+                    if x == 0: # if first blk in window
+                        self.cache.write(addr_bin, word) # write to l1
+                else:
+                    if x == 0: # if first blk in window
+                        self.hit2 += 1
+                    dirty, oldblk = self.cache.load(addr_bin, out) # load to l1 from l2
+                    if dirty: # write to l2 from l1
+                        dirty, oldblk = self.cache2.load(addr_bin, oldblk)
+                        if dirty: # write to mem from l2
+                            self.memory.load_block(addr_bin, oldblk)
+                    if x == 0: # if first blk in window
+                        self.cache.write(addr_bin, word) # write to l1
 
 # from decimal to binary
 def decpaddedaddr(addr, z):
@@ -105,10 +146,6 @@ if __name__ == '__main__':
     inclusion_policies = ["NON", "INCLUDE"]
     
     parser = argparse.ArgumentParser(description="Simulate the cache of a CPU.")
-    '''
-    parser.add_argument("MEMORY", metavar="MEMORY", type=int,
-                        help="Size of main memory in 2^N bytes", default=32)
-    '''
     parser.add_argument("BLOCK", metavar="BLOCK", type=int,
                         help="Size of a block of memory in 2^N bytes")
     parser.add_argument("CACHE1", metavar="CACHE1", type=int,
@@ -123,9 +160,10 @@ if __name__ == '__main__':
                         help="Replacement policy for cache {"+", ".join(replacement_policies)+"}")
     parser.add_argument("INCLUSION", metavar="INCLUSION", choices=inclusion_policies,
                         help="Replacement policy for cache {"+", ".join(inclusion_policies)+"}")
+    parser.add_argument("PREFETCH", metavar="PREFETCH", type=int,
+                        help="L2 prefetching window width")
     args = parser.parse_args()
 
-    #mem_size = 2 ** args.MEMORY
     mem_size = 2 ** 32
     cache_size1 = 2 ** args.CACHE1
     assoc1 = 2 ** args.ASSOC1
@@ -134,8 +172,8 @@ if __name__ == '__main__':
     block_size = 2 ** args.BLOCK
     replace_pol = args.REPLACE
     inclusion_pol = args.INCLUSION
+    pfch_window = args.PREFETCH
     
-    #addrlen = args.MEMORY
     addrlen = 32
     
     simulator = Simulator(mem_size,
@@ -145,7 +183,8 @@ if __name__ == '__main__':
                           assoc2,
                           block_size,
                           replace_pol,
-                          inclusion_pol)
+                          inclusion_pol,
+                          pfch_window)
     
     command = None
 
@@ -153,7 +192,8 @@ if __name__ == '__main__':
         try:
             operation = input("> ")
         except EOFError:
-            print('hits1:', simulator.hit, 'misses1:', simulator.miss)
+            print('prefetch window width: ' + str(pfch_window))
+            print('> hits1:', simulator.hit, 'misses1:', simulator.miss)
             print('> hits2:', simulator.hit2, 'misses2:', simulator.miss2)
             break
         operation = operation.split()
@@ -163,7 +203,7 @@ if __name__ == '__main__':
 
         if command == "read" and len(params) == 1:
             addr = decpaddedaddr(params[0], addrlen)
-            out = simulator.read(addr)
+            out = simulator.read(addr, addrlen)
             print(command, params[0], out)
         elif command == "write" and len(params) == 2:
             addr = decpaddedaddr(params[0], addrlen)
@@ -172,7 +212,7 @@ if __name__ == '__main__':
             print(command, params[0], params[1])
         elif command == "r" and len(params) == 1:
             addr = hexpaddedaddr(params[0], addrlen)
-            out = simulator.read(addr)
+            out = simulator.read(addr, addrlen)
             print(command, params[0], out)
         elif command == "w" and len(params) == 1:
             addr = hexpaddedaddr(params[0], addrlen)
