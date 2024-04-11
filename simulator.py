@@ -4,6 +4,7 @@ from memory import Memory
 
 import argparse
 import random
+import time
 
 
 
@@ -28,11 +29,17 @@ class Simulator:
             
         print("prefetch window width: " + str(pfch_window) +"\n")
 	    
-	    # hit and miss metrics
+	    # hit, miss, and average access time metrics
         self.hit = 0
         self.miss = 0
         self.hit2 = 0
         self.miss2 = 0
+        self.avg = 0
+        self.all_times = []
+        self.start_time = 0
+        self.end_time = 0
+        self.functions_called = 0
+
         
         self.include = True
         if inclusion_pol == "NON":
@@ -40,6 +47,8 @@ class Simulator:
           
     def read(self, addr, addrlen):
         window = self.window
+        self.functions_called += 1
+        self.start_time = time.time()
         
         out, offset = self.cache.read(addr) # read from l1 
        
@@ -84,6 +93,12 @@ class Simulator:
                             self.memory.load_block(addr_bin, oldblk)
                     if x == 0: # if first blk in window
                         out, offset = self.cache.read(addr_bin) # read from l1
+
+        self.end_time = time.time()
+        total_access_time = self.end_time - self.start_time
+        self.all_times.append(total_access_time)
+        self.avg = sum(self.all_times) / self.functions_called
+
             
         
         return out.item[offset]
@@ -91,6 +106,9 @@ class Simulator:
     def write(self, addr, word):
         window = self.window
         written = self.cache.write(addr, word) # write to l1
+        self.functions_called += 1
+        self.start_time = time.time()
+
         
         if written:
             self.hit +=1
@@ -100,6 +118,8 @@ class Simulator:
             for x in window:
                 current_block = (x*block_size)
                 current_addr = int(addr, 2) + current_block #int
+                if current_addr < 0:
+                    continue
                 addr_bin = decpaddedaddr(current_addr, addrlen) #decimal to binary
             
                 out, offset = self.cache2.read(addr_bin) # read from l2
@@ -132,6 +152,11 @@ class Simulator:
                             self.memory.load_block(addr_bin, oldblk)
                     if x == 0: # if first blk in window
                         self.cache.write(addr_bin, word) # write to l1
+
+        self.end_time = time.time()
+        total_access_time = self.end_time - self.start_time
+        self.all_times.append(total_access_time)
+        self.avg = sum(self.all_times) / self.functions_called
 
 # from decimal to binary
 def decpaddedaddr(addr, z):
@@ -188,6 +213,7 @@ if __name__ == '__main__':
     
     command = None
 
+    test_time= time.time()
     while (command != "quit"):
         try:
             operation = input("> ")
@@ -195,6 +221,7 @@ if __name__ == '__main__':
             print('prefetch window width: ' + str(pfch_window))
             print('> hits1:', simulator.hit, 'misses1:', simulator.miss)
             print('> hits2:', simulator.hit2, 'misses2:', simulator.miss2)
+            print("Average Access Time: " + str(simulator.avg) + " seconds")
             break
         operation = operation.split()
 
@@ -222,7 +249,9 @@ if __name__ == '__main__':
         elif command == "stats":
             print('hits1:', simulator.hit, 'misses1:', simulator.miss)
             print('hits2:', simulator.hit2, 'misses2:', simulator.miss2)
+            print("Average Access Time: " + str(simulator.avg) + " seconds")
         elif command != "quit":
             print('hits1:', simulator.hit, 'misses1:', simulator.miss)
             print('hits2:', simulator.hit2, 'misses2:', simulator.miss2)
+            print("Average Access Time: " + str(simulator.avg) + " seconds")
             print("\nERROR: invalid command\n")
