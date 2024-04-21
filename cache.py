@@ -9,24 +9,20 @@ class Block:
 		self.tag = None
 
 class Cache:
-  
-	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol, write_pol, block_pfch):
+	def __init__(self, cache_size, block_size, assoc, mem_size, replace_pol):
 		# define cache parameters
 		self.cache_size = cache_size
 		self.block_size = block_size
 		self.assoc = assoc
 		self.mem_size = mem_size
-        self.block_pfch = block_pfch
 		
 		#define policies
 		self.replace_pol = replace_pol
-		self.write_pol = write_pol
 		
 		self.n_set = self.cache_size // (self.block_size * self.assoc) # number of sets in cache
 		
 		# address params
 		self.nb_offset = int(log(self.block_size, 2)) # number of offset bits
-		print(self.n_set)
 		self.nb_index = int(log(self.n_set, 2)) # number of index bits
 		self.nb_tag = int(log(self.mem_size, 2)) - self.nb_index - self.nb_offset # number of tag bits
 		
@@ -51,7 +47,8 @@ class Cache:
 		out = None
 		for block in cacheset:
 			if block.valid == 1 and block.tag == tag:
-				out = block.item[offset]
+				#out = block.item[offset]
+				out = block
 				if self.replace_pol == 'LRU':
 					tmp = block
 					cacheset.remove(block)
@@ -66,11 +63,9 @@ class Cache:
 				elif self.replace_pol == 'RAND':
 					pass
 		
-		return out
+		return out, offset
 		
-
-	def write(self, address, word, blocks):     #blocks is number of blocks fetched + prefetched
-
+	def write(self, address, word):
 		'''
 		inputs:
 			address (str): binary address of memory element, in str format
@@ -83,30 +78,27 @@ class Cache:
 		
 		cacheset = self.set[index]
 		out = False
-
-        for x in block_pfch:
-            for block in cacheset:
-                if block.valid == 1 and block.tag == tag:
-                    block.item[offset] = word
-                    out = True
-                    if self.write_pol == 'WB':
-                        block.dirty = 1
-                        
-                    if self.replace_pol == 'LRU':
-                        tmp = block
-                        cacheset.remove(block)
-                        cacheset.append(tmp)
-                     
-                    elif self.replace_pol == 'LFU':
-                        block.use += 1
-                        
-                    elif self.replace_pol == 'FIFO':
-                        pass
-                        
-                    elif self.replace_pol == 'RAND':
-                        pass
-                        
-                    break
+		for block in cacheset:
+			if block.valid == 1 and block.tag == tag:
+				block.item[offset] = word
+				out = True
+				block.dirty = 1
+					
+				if self.replace_pol == 'LRU':
+					tmp = block
+					cacheset.remove(block)
+					cacheset.append(tmp)
+					
+				elif self.replace_pol == 'LFU':
+					block.use += 1
+					
+				elif self.replace_pol == 'FIFO':
+					pass
+					
+				elif self.replace_pol == 'RAND':
+					pass
+					
+				break
 					
 		return out
 		
@@ -126,17 +118,54 @@ class Cache:
 		newblk = Block(self.block_size)
 		newblk.valid = 1
 		newblk.tag = tag
-		newblk.item = data
+		newblk.item = data.item
+		newblk.dirty = data.dirty
 		
-		if self.replace_pol == 'LRU':
-			oldblk = self.LRU_op(cacheset, newblk)
-		elif self.replace_pol == 'LFU':
-			oldblk = self.LFU_op(cacheset, newblk)
-		elif self.replace_pol == 'FIFO':
-			oldblk = self.FIFO_op(cacheset, newblk)
-		elif self.replace_pol == 'RAND':
-			oldblk = self.RAND_op(cacheset, newblk)
+		if len(cacheset) >= self.assoc: #if set is full
+		    if self.replace_pol == 'LRU':
+			    oldblk = self.LRU_op(cacheset, newblk)
+		    elif self.replace_pol == 'LFU':
+			    oldblk = self.LFU_op(cacheset, newblk)
+		    elif self.replace_pol == 'FIFO':
+			    oldblk = self.FIFO_op(cacheset, newblk)
+		    elif self.replace_pol == 'RAND':
+			    oldblk = self.RAND_op(cacheset, newblk)
+		else:
+			cacheset.append(newblk)
+			return False, None
+	        
+		if oldblk.dirty == 1:
+			return True, oldblk
+		else:
+			return False, oldblk
 			
+	def purge(self, address):
+		'''
+		inputs:
+			address (str): binary address of memory element to purge
+		returns:
+			True, if block replaced is dirty
+			False, if block replaced is not dirty
+		'''
+		tag, index, offset = self.get_fields(address)
+		index = int(index, 2)
+		cacheset = self.set[index]
+		
+		newblk = Block(self.block_size)
+		
+		if len(cacheset) >= self.assoc: #if set is full
+		    if self.replace_pol == 'LRU':
+			    oldblk = self.LRU_op(cacheset, newblk)
+		    elif self.replace_pol == 'LFU':
+			    oldblk = self.LFU_op(cacheset, newblk)
+		    elif self.replace_pol == 'FIFO':
+			    oldblk = self.FIFO_op(cacheset, newblk)
+		    elif self.replace_pol == 'RAND':
+			    oldblk = self.RAND_op(cacheset, newblk)
+		else:
+			cacheset.append(newblk)
+			return False, None
+	        
 		if oldblk.dirty == 1:
 			return True, oldblk
 		else:
@@ -181,7 +210,7 @@ if __name__ == '__main__':
 	cache_size = 2**5
 	mem_size = 2 ** 10
 	block_size = 2 ** 3
-	assoc = 2
+	assoc = 2 ** 2
 	replace_pol = 'LFU'
 	
 	c = Cache(cache_size, block_size, assoc, mem_size, replace_pol)
