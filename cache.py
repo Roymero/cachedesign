@@ -1,4 +1,5 @@
 from math import log
+import random
 
 class Block:
 	def __init__(self, size):
@@ -177,6 +178,8 @@ class Cache:
 	def get_fields(self, address):
 		tag = address[:self.nb_tag]
 		index = address[self.nb_tag:self.nb_tag + self.nb_index]
+		if index == '':
+			index = '0'
 		offset = address[self.nb_tag + self.nb_index: self.nb_tag + self.nb_index + self.nb_offset]
 		return tag, index, offset
 		
@@ -198,7 +201,7 @@ class Cache:
 		return oldblk
 		
 	def RAND_op(self, cacheset, newblk):
-		idx = random.randint(len(cacheset))
+		idx = random.randint(0, len(cacheset) - 1)
 		oldblk = cacheset.pop(idx)
 		cacheset.append(newblk)
 		return oldblk

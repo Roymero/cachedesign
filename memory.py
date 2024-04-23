@@ -69,5 +69,7 @@ class Memory:
     def get_fields(self, address):
         tag = address[:self.nb_tag]
         index = address[self.nb_tag:self.nb_tag + self.nb_index]
+        if index == '':
+            index = '0'
         offset = address[self.nb_tag + self.nb_index: self.nb_tag + self.nb_index + self.nb_offset]
         return tag, index, offset
